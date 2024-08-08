@@ -2,7 +2,7 @@ pipeline {
     agent any
 
     tools {
-       terraform 'terraform'
+        terraform 'terraform'
     }
 
     parameters {
@@ -11,9 +11,10 @@ pipeline {
     }
 
     environment {
-        // TF_VAR_environment = params.TF_VAR_environment
         AWS_ACCESS_KEY_ID = credentials('AWS_ACCESS_KEY_ID')
         AWS_SECRET_ACCESS_KEY = credentials('AWS_SECRET_ACCESS_KEY')
+        // Setting environment variable from parameter
+        TF_VAR_environment = "${params.TF_VAR_environment}"
     }
 
     stages {
@@ -26,10 +27,7 @@ pipeline {
         stage('Terraform Init') {
             steps {
                 script {
-                    // withCredentials([string(credentialsId: 'AWS_SECRET_ACCESS_KEY', variable: 'AWS_ACCESS_KEY_ID'),
-                    //                  string(credentialsId: 'AWS_SECRET_ACCESS_KEY', variable: 'AWS_SECRET_ACCESS_KEY')]) {
-                    //     sh 'terraform init'
-                    // }
+                    // Initialize Terraform
                     sh 'terraform init'
                 }
             }
@@ -39,10 +37,12 @@ pipeline {
             steps {
                 script {
                     // Check if the Terraform workspace exists, create if not
-                    def workspaceExists = sh(script: 'terraform workspace select ${TF_VAR_environment} || true', returnStatus: true) == 0
+                    def workspaceExists = sh(script: "terraform workspace list | grep ${TF_VAR_environment} || true", returnStatus: true) == 0
 
                     if (!workspaceExists) {
                         sh "terraform workspace new ${TF_VAR_environment}"
+                    } else {
+                        sh "terraform workspace select ${TF_VAR_environment}"
                     }
                 }
             }
